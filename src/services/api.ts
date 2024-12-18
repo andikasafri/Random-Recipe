@@ -1,59 +1,56 @@
-import { Recipe, ApiResponse, Category } from '../types/Recipe';
 import { ApiError } from '../types/errors';
-import { fetchWithRetry } from '../utils/api-helpers';
-
-const BASE_URL = "https://www.themealdb.com/api/json/v1/1";
+import { Recipe } from '../types/interfaces';
 
 /**
- * Fetches a random recipe from the API with retry mechanism
- * @returns Promise<Recipe>
- * @throws {ApiError} When the fetch fails after retries
+ * Base URL for API requests.
  */
-export async function fetchRandomRecipe(): Promise<Recipe> {
-  try {
-    const response = await fetchWithRetry(`${BASE_URL}/random.php`);
-    const data: ApiResponse<Recipe> = await response.json();
-    
-    if (!data.meals?.[0]) {
-      throw new ApiError('No recipe found', 'NO_RECIPE', 0);
-    }
-    
-    return data.meals[0];
-  } catch (error) {
-    if (error instanceof ApiError) {
-      throw error;
-    }
-    throw new ApiError(
-      'Failed to fetch recipe',
-      'FETCH_ERROR',
-      0
-    );
-  }
-}
+const BASE_URL = 'https://www.themealdb.com/api/json/v1/1';
 
 /**
- * Fetches all available categories
- * @returns Promise<Category[]>
- * @throws {ApiError} When the fetch fails after retries
+ * Fetch data from TheMealDB API.
+ *
+ * @param endpoint - API endpoint to fetch data from.
+ * @returns Response data as a generic type.
+ * @throws ApiError if the fetch fails.
  */
-export async function fetchCategories(): Promise<Category[]> {
+const fetchFromApi = async <T>(endpoint: string): Promise<T> => {
   try {
-    const response = await fetchWithRetry(`${BASE_URL}/categories.php`);
-    const data: ApiResponse<Category> = await response.json();
-    
-    if (!data.categories) {
-      throw new ApiError('No categories found', 'NO_CATEGORIES', 0);
+    const response = await fetch(`${BASE_URL}/${endpoint}`);
+
+    // Check if the response is OK (status in the range 200-299)
+    if (!response.ok) {
+      throw new ApiError(
+        `Failed to fetch (${response.status}): ${response.statusText}`,
+        'FETCH_ERROR',
+        response.status // Pass the status as retryCount
+      );
     }
-    
-    return data.categories;
+
+    // Parse and return the JSON response
+    return await response.json();
   } catch (error) {
-    if (error instanceof ApiError) {
-      throw error;
-    }
-    throw new ApiError(
-      'Failed to fetch categories',
-      'FETCH_ERROR',
-      0
-    );
+    // Handle known ApiError
+    if (error instanceof ApiError) throw error;
+
+    // Handle unknown errors
+    throw new ApiError('An unknown error occurred', 'UNKNOWN_ERROR', 0); // Pass 0 as retryCount
   }
-}
+};
+
+/**
+ * Fetch a random recipe.
+ *
+ * @returns A single recipe.
+ * @throws ApiError if no recipe is found or if the fetch fails.
+ */
+export const fetchRandomRecipe = async (): Promise<Recipe> => {
+  const data = await fetchFromApi<{ meals: Recipe[] }>('random.php');
+
+  // Check if meals data is available
+  if (!data.meals || data.meals.length === 0) {
+    throw new ApiError('No recipe data available.', 'NO_DATA', 0); // Pass 0 as retryCount
+  }
+
+  // Return the first recipe from the meals array
+  return data.meals[0];
+};

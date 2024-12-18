@@ -1,11 +1,22 @@
 import React from 'react';
 import { Recipe } from '../types/interfaces';
 
+// Props interface for RecipeInstructions component
 interface RecipeInstructionsProps {
-  recipe: Recipe;
+  recipe: Recipe; // The recipe object containing details to display
 }
 
-export const RecipeInstructions: React.FC<RecipeInstructionsProps> = ({ recipe }) => {
+/**
+ * RecipeInstructions component displays the cooking instructions for a recipe.
+ * It formats the instructions by splitting them into individual steps.
+ *
+ * @param {RecipeInstructionsProps} props - The props for the component.
+ * @returns {JSX.Element} The rendered instructions section.
+ */
+export const RecipeInstructions: React.FC<RecipeInstructionsProps> = ({
+  recipe,
+}) => {
+  // Split instructions by new line and filter out any empty lines
   const instructions = recipe.strInstructions.split('\n').filter(Boolean);
 
   return (
